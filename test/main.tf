@@ -70,11 +70,10 @@ module "key_ring" {
   source  = "binxio/kms/google//modules/key_ring"
   version = "~> 1.0.0"
 
-  owner       = local.owner
   project     = local.project
   environment = local.environment
 
-  name = "terratest"
+  purpose = "terratest"
 }
 
 module "gke_crypto_key" {
@@ -97,6 +96,6 @@ module "gke_sa" {
   environment = local.environment
 
   service_accounts = {
-    "gke" = {}
+    "gke-test" = {}
   }
 }

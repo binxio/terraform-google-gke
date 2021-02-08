@@ -6,6 +6,8 @@ locals {
   gke_subnet_name = "gke-k8nodes"
 }
 
+data "google_project" "project" {}
+
 #############################################################
 #
 # Cluster configuration
@@ -32,6 +34,10 @@ module "gke" {
 
   database_encryption_kms_key = module.gke_crypto_key.crypto_key
 
+  workload_identity_config = [{
+    identity_namespace = format("%s.svc.id.goog", data.google_project.project.project_id)
+  }]
+
   # Provide generic defaults for our nodepools so we don't have to set them for each of them seperately.
   # Merged with the module's node_pool_defaults output to fill in missing variables
   node_pool_defaults = merge(
@@ -41,7 +47,10 @@ module "gke" {
       disk_size_gb    = 10
       labels = {
         "mylabel" = "6"
-      }
+      },
+      workload_metadata_config = [{
+        node_metadata = "GKE_METADATA_SERVER" # Enables workload identity on the node.
+      }]
     }
   )
 

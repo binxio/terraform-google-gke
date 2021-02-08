@@ -105,7 +105,7 @@ module "key_ring" {
   project     = local.project
   environment = local.environment
 
-  name = "demo"
+  purpose = "demo"
 }
 
 module "gke_crypto_key" {
@@ -128,7 +128,7 @@ module "gke_sa" {
   environment = local.environment
 
   service_accounts = {
-    "gke" = {}
+    "gke-demo" = {}
   }
 }
 

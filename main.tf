@@ -22,15 +22,20 @@ locals {
     node_count              = 0
     local_ssd_count         = 0
     service_account         = null
+    management = {
+      auto_repair  = can(var.release_channel) && try(var.release_channel.channel, null) == "REGULAR" ? true : false
+      auto_upgrade = can(var.release_channel) && try(var.release_channel.channel, null) == "REGULAR" ? true : false
+    }
     metadata = {
       disable-legacy-endpoints = "true"
     }
     oauth_scopes = [                                   # These scopes limit access to what you can access, ie. even if your serviceaccount is admin, it still can't reach it if the scope does not include it.
       "https://www.googleapis.com/auth/cloud-platform" # Default allows all cloud services.
     ]
-    preemptible = false
-    tags        = []
-    owner       = var.owner
+    preemptible              = false
+    tags                     = []
+    owner                    = var.owner
+    workload_metadata_config = []
   }
   # Merge defaults with module defaults and user provided variables
   node_pool_defaults = var.node_pool_defaults == null ? local.module_node_pool_defaults : merge(local.module_node_pool_defaults, var.node_pool_defaults)
@@ -112,6 +117,14 @@ resource "google_container_cluster" "gke" {
     }
   }
 
+  dynamic "workload_identity_config" {
+    for_each = var.workload_identity_config
+
+    content {
+      identity_namespace = workload_identity_config.value.identity_namespace
+    }
+  }
+
   master_auth {
     client_certificate_config { # This disables basic auth
       issue_client_certificate = var.issue_client_certificate
@@ -163,20 +176,20 @@ resource "google_container_cluster" "gke" {
 
   addons_config {
     http_load_balancing {
-      disabled = ! var.addon_http_load_balancing
+      disabled = !var.addon_http_load_balancing
     }
     horizontal_pod_autoscaling {
-      disabled = ! var.addon_horizontal_pod_autoscaling
+      disabled = !var.addon_horizontal_pod_autoscaling
     }
     istio_config {
-      disabled = ! var.addon_istio_enabled
+      disabled = !var.addon_istio_enabled
       auth     = var.addon_istio_auth
     }
     gce_persistent_disk_csi_driver_config {
       enabled = var.addon_gce_persistent_disk_csi_driver_enabled
     }
     network_policy_config {
-      disabled = ! (var.network_policy != null && var.network_policy.enabled)
+      disabled = !(var.network_policy != null && var.network_policy.enabled)
     }
   }
 
@@ -232,6 +245,10 @@ resource "google_container_node_pool" "pools" {
       max_node_count = each.value.max_node_count
     }
   }
+  management {
+    auto_repair  = try(each.value.management.auto_repair, null)
+    auto_upgrade = try(each.value.management.auto_upgrade, null)
+  }
   node_config {
     disk_size_gb = each.value.disk_size_gb
     disk_type    = each.value.disk_type
@@ -242,6 +259,7 @@ resource "google_container_node_pool" "pools" {
         count = each.value.guest_accelerator_count
       }
     }
+
     image_type      = each.value.image_type # Changing this will nuke all nodes!
     labels          = each.value.labels
     local_ssd_count = each.value.local_ssd_count
@@ -251,5 +269,13 @@ resource "google_container_node_pool" "pools" {
     preemptible     = each.value.preemptible
     service_account = each.value.service_account
     tags            = each.value.tags
+
+    dynamic "workload_metadata_config" {
+      for_each = each.value.workload_metadata_config
+
+      content {
+        node_metadata = workload_metadata_config.value.node_metadata
+      }
+    }
   }
 }

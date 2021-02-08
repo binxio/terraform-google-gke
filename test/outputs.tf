@@ -11,7 +11,7 @@ output "vpc_vars" {
 }
 
 output "gke_sa" {
-  value = module.gke_sa.map["gke"].email
+  value = module.gke_sa.map["gke-test"].email
 }
 
 output "key_ring_name" {
@@ -23,9 +23,9 @@ output "key_ring" {
 }
 
 output "crypto_key_name" {
-  value = module.crypto_key.crypto_key_name
+  value = module.gke_crypto_key.crypto_key_name
 }
 
 output "crypto_key" {
-  value = module.crypto_key.crypto_key
+  value = module.gke_crypto_key.crypto_key
 }

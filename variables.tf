@@ -34,6 +34,14 @@ variable "location" {
   default     = "europe-west4"
 }
 
+variable "workload_identity_config" {
+  description = "Workload Identity allows Kubernetes service accounts to act as a user-managed Google IAM Service Account."
+  type = list(object({
+    identity_namespace = string
+  }))
+  default = []
+}
+
 variable "issue_client_certificate" {
   description = "Issue client certficate for cluster authentication"
   type        = bool
@@ -90,14 +98,18 @@ variable "node_pool_defaults" {
     labels                  = map(string)
     local_ssd_count         = number
     service_account         = string
-    min_node_count          = number
-    max_node_count          = number
     machine_type            = string
+    management              = map(string)
+    max_node_count          = number
     metadata                = map(string)
+    min_node_count          = number
     node_count              = number
     oauth_scopes            = list(string)
     preemptible             = bool
     tags                    = list(string)
+    workload_metadata_config = list(object({
+      node_metadata = string
+    }))
   })
   default = null
 }

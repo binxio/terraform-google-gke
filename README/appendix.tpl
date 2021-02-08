@@ -3,6 +3,7 @@ Required APIs
 For the VPC services to deploy, the following APIs should be enabled in your project:
  * `iam.googleapis.com`
  * `container.googleapis.com`
+ * `cloudkms.googleapis.com`
 
 Testing
 =======
