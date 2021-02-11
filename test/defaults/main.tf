@@ -14,9 +14,11 @@ module "gke" {
   purpose = "terratest"
 
   # GKE Settings
-  network                = var.network
-  subnetwork             = var.subnetwork
-  master_ipv4_cidr_block = "10.0.0.0/28"
+  network    = var.network
+  subnetwork = var.subnetwork
+  private_cluster_config = {
+    master_ipv4_cidr_block = "10.0.0.0/28"
+  }
   master_authorized_networks = {
     "10.10.0.0/18" = "local-network"
   }

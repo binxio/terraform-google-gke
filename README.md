@@ -15,19 +15,19 @@ Provider Requirements:
 * `addon_istio_auth` (default `"AUTH_NONE"`): AUTH_MUTUAL_TLS (strict mode) or AUTH_NONE (permissive)
 * `addon_istio_enabled` (default `false`)
 * `addon_kubernetes_dashboard` (default `false`): Enable Kubernetes Dashboard addon (deprecated)
-* `daily_maintenance_start_time` (default `"02:00"`): Start time of daily maintenance in GMT, expecting HH:MM format
 * `database_encryption_kms_key` (default `""`): Supply this key to have the GKE's master etcd encrypted with specified KMS key, empty for decrypted
 * `environment` (required): Company environment for which the resources are created (e.g. dev, tst, acc, prd, all).
 * `issue_client_certificate` (default `false`): Issue client certficate for cluster authentication
 * `location` (default `"europe-west4"`): Location to deploy cluster and nodes to, can be a zone or a region
-* `master_authorized_networks` (required): Map of CIDR block -> DisplayName entries
-* `master_ipv4_cidr_block` (required): Master IPv4 CIDR block, may not overlap with rest of the network. MUST BE A /28 !!!
+* `maintenance_policy` (required): Daily or recurring maintenance policy object as supported by the Terraform GKE resource
 * `min_master_version` (default `null`): Minimum master version, e.g. 1.16. Note that this bites with the release_channel setting
 * `network` (default `null`): VPC to use for the cluster, may be shared. Note that the '$subnetwork' subnetwork will be used.
 * `network_policy` (default `{"enabled":false,"provider":"PROVIDER_UNSPECIFIED"}`): Enable the network policy addon with these settings
 * `node_pool_defaults` (default `null`): Node Pool defaults
 * `node_pools` (required): Node Pool definitions, one per map entry, key will be used in name
 * `owner` (required): Owner of the resource. This variable is used to set the 'owner' label.
+* `private_cluster_config` (required)
+* `private_cluster_config_defaults` (required)
 * `project` (required): Company project name.
 * `purpose` (required): The purpose for which the resources are created (e.g. gitlab-runner, backend-nodes)
 * `region` (default `"europe-west4"`): The region to start the nodes in.

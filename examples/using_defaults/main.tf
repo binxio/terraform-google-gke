@@ -23,9 +23,11 @@ module "gke" {
   purpose = "demo"
 
   # GKE Settings
-  network                = module.vpc.vpc
-  subnetwork             = local.gke_subnet_name
-  master_ipv4_cidr_block = "10.0.0.0/28"
+  network    = module.vpc.vpc
+  subnetwork = local.gke_subnet_name
+  private_cluster_config = {
+    master_ipv4_cidr_block = "10.0.0.0/28"
+  }
   master_authorized_networks = {
     "10.10.0.0/18" = "local-network"
   }

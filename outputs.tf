@@ -16,9 +16,9 @@ output "gke_cluster_master_version" {
   description = "Master version running on GKE cluster, which can differ from specified minimum version"
   value       = google_container_cluster.gke.master_version
 }
-output "gke_cluster_maintenance_window_duration" {
-  value       = google_container_cluster.gke.maintenance_policy.0.daily_maintenance_window.0.duration
-  description = "Daily maintenance window duration in RFC3339 format"
+output "gke_cluster_maintenance_policy" {
+  value       = google_container_cluster.gke.maintenance_policy.0
+  description = "Cluster maintenance window"
 }
 output "gke_cluster_services_ipv4_cidr" {
   description = "IPv4 CIDR of services range"

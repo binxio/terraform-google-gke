@@ -14,6 +14,7 @@ locals {
     disk_type               = "pd-ssd" # or "pd-standard"
     guest_accelerator_type  = null
     guest_accelerator_count = 0
+    node_locations          = null
     image_type              = null
     labels                  = local.labels
     machine_type            = "n1-standard-1"
@@ -23,8 +24,8 @@ locals {
     local_ssd_count         = 0
     service_account         = null
     management = {
-      auto_repair  = can(var.release_channel) && try(var.release_channel.channel, null) == "REGULAR" ? true : false
-      auto_upgrade = can(var.release_channel) && try(var.release_channel.channel, null) == "REGULAR" ? true : false
+      auto_repair  = can(var.release_channel) && try(var.release_channel.channel, "") != "" ? true : false
+      auto_upgrade = can(var.release_channel) && try(var.release_channel.channel, "") != "" ? true : false
     }
     metadata = {
       disable-legacy-endpoints = "true"
@@ -37,8 +38,18 @@ locals {
     owner                    = var.owner
     workload_metadata_config = []
   }
+  module_private_cluster_config_defaults = {
+    enable_private_endpoint = true
+    enable_private_nodes    = true
+    master_ipv4_cidr_block  = null # "Master IPv4 CIDR block, may not overlap with rest of the network. MUST BE A /28 !!!"
+    master_global_access_config = {
+      enabled = true
+    }
+  }
+
   # Merge defaults with module defaults and user provided variables
-  node_pool_defaults = var.node_pool_defaults == null ? local.module_node_pool_defaults : merge(local.module_node_pool_defaults, var.node_pool_defaults)
+  node_pool_defaults              = var.node_pool_defaults == null ? local.module_node_pool_defaults : merge(local.module_node_pool_defaults, var.node_pool_defaults)
+  private_cluster_config_defaults = var.private_cluster_config_defaults == null ? local.module_private_cluster_config_defaults : merge(local.module_private_cluster_config_defaults, var.private_cluster_config_defaults)
 
   gke_sa = format("gke-%s", local.purpose)
 
@@ -57,6 +68,10 @@ locals {
     for node_pool, settings in var.node_pools : node_pool => merge(local.node_pool_defaults, settings)
   }
   service_account = [for n, s in local.node_pools : s.service_account][0]
+  private_cluster_config = merge(
+    local.private_cluster_config_defaults,
+    var.private_cluster_config
+  )
 
   # See how the network was supplied
   # IF it has a slash, it's long notation including project, otherwise it's just the name.
@@ -150,11 +165,11 @@ resource "google_container_cluster" "gke" {
   network            = data.google_compute_network.net.self_link
 
   private_cluster_config {
-    enable_private_endpoint = true
-    enable_private_nodes    = true
-    master_ipv4_cidr_block  = var.master_ipv4_cidr_block
+    enable_private_endpoint = try(local.private_cluster_config.enable_private_endpoint, true)
+    enable_private_nodes    = try(local.private_cluster_config.enable_private_nodes, true)
+    master_ipv4_cidr_block  = try(local.private_cluster_config.master_ipv4_cidr_block, null)
     master_global_access_config {
-      enabled = true
+      enabled = try(local.private_cluster_config.master_global_access_config.enabled, true)
     }
   }
 
@@ -208,8 +223,21 @@ resource "google_container_cluster" "gke" {
   }
 
   maintenance_policy {
-    daily_maintenance_window {
-      start_time = var.daily_maintenance_start_time
+    dynamic "daily_maintenance_window" {
+      for_each = can(var.maintenance_policy.daily_maintenance_window) ? [try(var.maintenance_policy.daily_maintenance_window, {})] : []
+
+      content {
+        start_time = daily_maintenance_window.value.start_time
+      }
+    }
+    dynamic "recurring_window" {
+      for_each = can(var.maintenance_policy.recurring_window) ? [try(var.maintenance_policy.recurring_window, {})] : []
+
+      content {
+        start_time = recurring_window.value.start_time
+        end_time   = recurring_window.value.end_time
+        recurrence = recurring_window.value.recurrence
+      }
     }
   }
 
@@ -235,9 +263,10 @@ resource "google_container_node_pool" "pools" {
   for_each = local.node_pools
   cluster  = google_container_cluster.gke.name
 
-  name       = format("%s-%s", local.pool_name_prefix, lower(replace(each.key, " ", "-")))
-  location   = var.location
-  node_count = (each.value.node_count == 0 ? null : each.value.node_count)
+  name           = format("%s-%s", local.pool_name_prefix, lower(replace(each.key, " ", "-")))
+  location       = var.location
+  node_locations = each.value.node_locations
+  node_count     = (each.value.node_count == 0 ? null : each.value.node_count)
   dynamic "autoscaling" {
     for_each = each.value.max_node_count != 0 ? [each.value.max_node_count] : []
     content {

@@ -135,6 +135,7 @@ func TestUT_Assertions(t *testing.T) {
 	expectedAssertNameTooLong := "'s generated name is too long"
 	expectedAssertNameInvalidChars := "does not match regex"
 	expectedAssertKeyLocation := "ETCD Database Encryption Key specified"
+	expectedAssertMasterCIDR := "Master IPv4 CIDR block should be"
 
 	setTerraformOptions("assertions", region, tmpAssertsSubnet, projectId)
 
@@ -144,6 +145,7 @@ func TestUT_Assertions(t *testing.T) {
 	assert.Contains(t, out, expectedAssertNameTooLong)
 	assert.Contains(t, out, expectedAssertNameInvalidChars)
 	assert.Contains(t, out, expectedAssertKeyLocation)
+	assert.Contains(t, out, expectedAssertMasterCIDR)
 }
 
 func TestUT_Defaults(t *testing.T) {

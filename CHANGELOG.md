@@ -1,6 +1,12 @@
 # Changelog
 
-## V1.1.0 (2021-02-08)
+## v1.2.0 (2021-02-11)
+
+### Features
+* Added support for providing a custom private cluster configuration
+* Added support for providing node_locations for node pools
+
+## v1.1.0 (2021-02-08)
 
 This release requires Terraform 0.14 or higher
 

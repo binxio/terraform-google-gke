@@ -72,10 +72,9 @@ variable "security_group" {
   type        = string
 }
 
-variable "daily_maintenance_start_time" {
-  description = "Start time of daily maintenance in GMT, expecting HH:MM format"
-  default     = "02:00"
-  type        = string
+variable "maintenance_policy" {
+  description = "Daily or recurring maintenance policy object as supported by the Terraform GKE resource"
+  default     = null
 }
 
 variable "database_encryption_kms_key" {
@@ -104,6 +103,7 @@ variable "node_pool_defaults" {
     metadata                = map(string)
     min_node_count          = number
     node_count              = number
+    node_locations          = list(string)
     oauth_scopes            = list(string)
     preemptible             = bool
     tags                    = list(string)
@@ -112,15 +112,6 @@ variable "node_pool_defaults" {
     }))
   })
   default = null
-}
-
-variable "master_ipv4_cidr_block" {
-  description = "Master IPv4 CIDR block, may not overlap with rest of the network. MUST BE A /28 !!!"
-  type        = string
-}
-variable "master_authorized_networks" {
-  type        = map(string)
-  description = "Map of CIDR block -> DisplayName entries"
 }
 
 variable "min_master_version" {
@@ -135,6 +126,16 @@ variable "release_channel" {
   })
   default     = null
   description = "Release channel to subscribe to regarding automatic ugprades. This setting will impose version constraints to your cluster, so be careful when changing it!"
+}
+
+variable "private_cluster_config_defaults" {
+}
+variable "private_cluster_config" {
+}
+
+variable "master_authorized_networks" {
+  type        = map(string)
+  description = "Map of CIDR block -> DisplayName entries"
 }
 
 # Addon config variables
