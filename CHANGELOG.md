@@ -5,6 +5,7 @@
 ### Features
 * Added support for providing a custom private cluster configuration
 * Added support for providing node_locations for node pools
+* Added support for providing maintenance_policy configuration
 
 ## v1.1.0 (2021-02-08)
 
