@@ -68,8 +68,8 @@ variable "subnetwork" {
 
 variable "security_group" {
   description = "Google (GSuite) Group to enable RBAC GKE access, format must be gke-security-groups@yourdomain.com"
-  default     = null
   type        = string
+  default     = null
 }
 
 variable "maintenance_policy" {
@@ -80,6 +80,12 @@ variable "maintenance_policy" {
 variable "database_encryption_kms_key" {
   description = "Supply this key to have the GKE's master etcd encrypted with specified KMS key, empty for decrypted"
   default     = ""
+}
+
+variable "enable_autopilot" {
+  description = "Enable Autopilot for this cluster. Defaults to false. Note that when this option is enabled, certain features of Standard GKE are not available. See the official documentation for available features."
+  type        = bool
+  default     = false
 }
 
 variable "node_pools" {
@@ -115,17 +121,17 @@ variable "node_pool_defaults" {
 }
 
 variable "min_master_version" {
+  description = "Minimum master version, e.g. 1.16. Note that this bites with the release_channel setting"
   type        = string
   default     = null
-  description = "Minimum master version, e.g. 1.16. Note that this bites with the release_channel setting"
 }
 
 variable "release_channel" {
+  description = "Release channel to subscribe to regarding automatic ugprades. This setting will impose version constraints to your cluster, so be careful when changing it!"
   type = object({
     channel = string
   })
-  default     = null
-  description = "Release channel to subscribe to regarding automatic ugprades. This setting will impose version constraints to your cluster, so be careful when changing it!"
+  default = null
 }
 
 variable "private_cluster_config_defaults" {
@@ -134,8 +140,8 @@ variable "private_cluster_config" {
 }
 
 variable "master_authorized_networks" {
-  type        = map(string)
   description = "Map of CIDR block -> DisplayName entries"
+  type        = map(string)
 }
 
 # Addon config variables
@@ -144,8 +150,8 @@ variable "addon_istio_enabled" {
   default = false
 }
 variable "addon_istio_auth" {
-  type        = string
   description = "AUTH_MUTUAL_TLS (strict mode) or AUTH_NONE (permissive)"
+  type        = string
   default     = "AUTH_NONE"
 }
 variable "addon_kubernetes_dashboard" {
