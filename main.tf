@@ -67,7 +67,7 @@ locals {
   node_pools = {
     for node_pool, settings in var.node_pools : node_pool => merge(local.node_pool_defaults, settings)
   }
-  service_account = [for n, s in local.node_pools : s.service_account][0]
+  service_account = var.enable_autopilot ? null : try([for n, s in local.node_pools : s.service_account][0], null)
   private_cluster_config = merge(
     local.private_cluster_config_defaults,
     var.private_cluster_config
@@ -75,9 +75,10 @@ locals {
 
   # See how the network was supplied
   # IF it has a slash, it's long notation including project, otherwise it's just the name.
-  network_regex   = "^projects/(?P<project>[^/]+).*?/(?P<network>[^/]+)?$"
-  network_name    = (length(regexall("/", var.network)) > 0 ? regex(local.network_regex, var.network)["network"] : var.network)
-  network_project = (length(regexall("/", var.network)) > 0 ? regex(local.network_regex, var.network)["project"] : null)
+  network_regex    = "^projects/(?P<project>[^/]+).*?/(?P<network>[^/]+)?$"
+  network_name     = (length(regexall("/", var.network)) > 0 ? regex(local.network_regex, var.network)["network"] : var.network)
+  network_project  = (length(regexall("/", var.network)) > 0 ? regex(local.network_regex, var.network)["project"] : null)
+  enable_autopilot = var.enable_autopilot
 
   subnetwork = var.subnetwork
 }
@@ -109,12 +110,72 @@ data "google_container_cluster" "exists" {
 # GKE Cluster
 #---------------------------------------------------------------------------------------------
 resource "google_container_cluster" "gke" {
-  provider                 = google-beta
-  name                     = local.name
-  resource_labels          = local.labels
-  location                 = var.location
-  remove_default_node_pool = true
-  initial_node_count       = 1
+  provider = google-beta
+
+  name               = local.name
+  resource_labels    = local.labels
+  location           = var.location
+  initial_node_count = 1
+
+  #--------------------------------------------------------
+  # START settings dependent on autopilot enabled or not
+  #--------------------------------------------------------
+  enable_autopilot         = local.enable_autopilot
+  remove_default_node_pool = var.enable_autopilot ? null : true
+
+  dynamic "workload_identity_config" {
+    for_each = var.enable_autopilot ? [] : var.workload_identity_config
+
+    content {
+      identity_namespace = workload_identity_config.value.identity_namespace
+    }
+  }
+
+  dynamic "network_policy" {
+    for_each = var.enable_autopilot ? [] : (var.network_policy != null && var.network_policy.enabled ? [var.network_policy] : [])
+
+    content {
+      provider = network_policy.value.provider
+      enabled  = network_policy.value.enabled
+    }
+  }
+
+  dynamic "database_encryption" {
+    for_each = var.enable_autopilot ? {} : { state = var.database_encryption_kms_key != "" ? "ENCRYPTED" : "DECRYPTED", key_name = var.database_encryption_kms_key != "" ? var.database_encryption_kms_key : "" }
+
+    content {
+      state    = each.value.state
+      key_name = each.value.key_name
+    }
+  }
+
+  addons_config {
+    horizontal_pod_autoscaling {
+      disabled = var.enable_autopilot ? !var.enable_autopilot : !var.addon_horizontal_pod_autoscaling
+    }
+    dynamic "network_policy_config" {
+      for_each = var.enable_autopilot ? {} : { disabled = !(var.network_policy != null && var.network_policy.enabled) }
+
+      content {
+        disabled = each.value.disabled
+      }
+    }
+    istio_config {
+      disabled = !var.addon_istio_enabled
+      auth     = var.addon_istio_auth
+    }
+
+    gce_persistent_disk_csi_driver_config {
+      enabled = var.addon_gce_persistent_disk_csi_driver_enabled
+    }
+    http_load_balancing {
+      disabled = !var.addon_http_load_balancing
+    }
+  }
+
+  #--------------------------------------------------------
+  # END settings dependent on autopilot enabled or not
+  #--------------------------------------------------------
 
   # NOTE:
   # Do _NOT_ add a node_config{} block here, see https://github.com/terraform-providers/terraform-provider-google/issues/2115
@@ -128,15 +189,7 @@ resource "google_container_cluster" "gke" {
 
     content {
       service_account = local.service_account
-      tags            = distinct(flatten([for pool in local.node_pools : try(pool.tags, [])]))
-    }
-  }
-
-  dynamic "workload_identity_config" {
-    for_each = var.workload_identity_config
-
-    content {
-      identity_namespace = workload_identity_config.value.identity_namespace
+      tags            = ["allow-internet", "gke-node"] #distinct(flatten([for pool in local.node_pools : try(pool.tags, ["allow-internet"])]))
     }
   }
 
@@ -189,38 +242,7 @@ resource "google_container_cluster" "gke" {
     }
   }
 
-  addons_config {
-    http_load_balancing {
-      disabled = !var.addon_http_load_balancing
-    }
-    horizontal_pod_autoscaling {
-      disabled = !var.addon_horizontal_pod_autoscaling
-    }
-    istio_config {
-      disabled = !var.addon_istio_enabled
-      auth     = var.addon_istio_auth
-    }
-    gce_persistent_disk_csi_driver_config {
-      enabled = var.addon_gce_persistent_disk_csi_driver_enabled
-    }
-    network_policy_config {
-      disabled = !(var.network_policy != null && var.network_policy.enabled)
-    }
-  }
 
-  dynamic "network_policy" {
-    for_each = var.network_policy != null && var.network_policy.enabled ? [var.network_policy] : []
-
-    content {
-      provider = network_policy.value.provider
-      enabled  = network_policy.value.enabled
-    }
-  }
-
-  database_encryption {
-    state    = var.database_encryption_kms_key != "" ? "ENCRYPTED" : "DECRYPTED"
-    key_name = var.database_encryption_kms_key != "" ? var.database_encryption_kms_key : ""
-  }
 
   maintenance_policy {
     dynamic "daily_maintenance_window" {
