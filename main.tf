@@ -144,8 +144,8 @@ resource "google_container_cluster" "gke" {
     for_each = var.enable_autopilot ? {} : { state = var.database_encryption_kms_key != "" ? "ENCRYPTED" : "DECRYPTED", key_name = var.database_encryption_kms_key != "" ? var.database_encryption_kms_key : "" }
 
     content {
-      state    = each.value.state
-      key_name = each.value.key_name
+      state    = database_encryption.value.state
+      key_name = database_encryption.value.key_name
     }
   }
 
@@ -157,7 +157,7 @@ resource "google_container_cluster" "gke" {
       for_each = var.enable_autopilot ? {} : { disabled = !(var.network_policy != null && var.network_policy.enabled) }
 
       content {
-        disabled = each.value.disabled
+        disabled = network_policy_config.value.disabled
       }
     }
     istio_config {
