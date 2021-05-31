@@ -120,8 +120,8 @@ resource "google_container_cluster" "gke" {
   #--------------------------------------------------------
   # START settings dependent on autopilot enabled or not
   #--------------------------------------------------------
-  enable_autopilot         = local.enable_autopilot
-  remove_default_node_pool = var.enable_autopilot ? null : true
+  enable_autopilot         = local.enable_autopilot ? true : null
+  remove_default_node_pool = local.enable_autopilot ? null : true
 
   dynamic "workload_identity_config" {
     for_each = var.enable_autopilot ? [] : var.workload_identity_config
@@ -141,7 +141,7 @@ resource "google_container_cluster" "gke" {
   }
 
   dynamic "database_encryption" {
-    for_each = var.enable_autopilot ? {} : { state = var.database_encryption_kms_key != "" ? "ENCRYPTED" : "DECRYPTED", key_name = var.database_encryption_kms_key != "" ? var.database_encryption_kms_key : "" }
+    for_each = var.enable_autopilot ? {} : { "database_encryption" = { state = (var.database_encryption_kms_key != "" ? "ENCRYPTED" : "DECRYPTED"), key_name = (var.database_encryption_kms_key != "" ? var.database_encryption_kms_key : "") } }
 
     content {
       state    = database_encryption.value.state
@@ -154,7 +154,7 @@ resource "google_container_cluster" "gke" {
       disabled = var.enable_autopilot ? !var.enable_autopilot : !var.addon_horizontal_pod_autoscaling
     }
     dynamic "network_policy_config" {
-      for_each = var.enable_autopilot ? {} : { disabled = !(var.network_policy != null && var.network_policy.enabled) }
+      for_each = var.enable_autopilot ? {} : { "network_policy" = { disabled = !(var.network_policy != null && var.network_policy.enabled) } }
 
       content {
         disabled = network_policy_config.value.disabled
